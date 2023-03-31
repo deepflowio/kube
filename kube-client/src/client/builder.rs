@@ -94,10 +94,16 @@ impl TryFrom<Config> for ClientBuilder<BoxService<Request<hyper::Body>, Response
                 not(any(feature = "openssl-tls", feature = "native-tls")),
                 feature = "rustls-tls"
             ))]
-            let connector = hyper_rustls::HttpsConnector::from((
-                connector,
-                std::sync::Arc::new(config.rustls_client_config()?),
-            ));
+            let connector = {
+                let rustls_config = config.rustls_client_config()?;
+                let mut builder = hyper_rustls::HttpsConnectorBuilder::new()
+                    .with_tls_config(rustls_config)
+                    .https_or_http();
+                if let Some(tsn) = config.tls_server_name.as_ref() {
+                    builder = builder.with_server_name(tsn.clone());
+                }
+                builder.enable_http1().wrap_connector(connector)
+            };
 
             let mut connector = TimeoutConnector::new(connector);
 
