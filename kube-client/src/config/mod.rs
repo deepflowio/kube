@@ -139,6 +139,10 @@ pub struct Config {
     // TODO Actually support proxy or create an example with custom client
     /// Optional proxy URL.
     pub proxy_url: Option<http::Uri>,
+    /// If set, apiserver certificate will be validated to contain this string
+    ///
+    /// If not set, the `cluster_url` is used instead
+    pub tls_server_name: Option<String>,
 }
 
 impl Config {
@@ -156,6 +160,7 @@ impl Config {
             accept_invalid_certs: false,
             auth_info: AuthInfo::default(),
             proxy_url: None,
+            tls_server_name: None,
         }
     }
 
@@ -182,6 +187,10 @@ impl Config {
             }
             Ok(success) => success,
         };
+        if cfg!(all(not(feature = "openssl-tls"), feature = "rustls-tls")) {
+            // openssl takes precedence when both features present, so only do it when only rustls is there
+            config.tls_server_name = Some("kubernetes.default.svc".to_string());
+        }
         config.apply_debug_overrides();
         Ok(config)
     }
@@ -192,7 +201,7 @@ impl Config {
     /// and relies on you having the service account's token mounted,
     /// as well as having given the service account rbac access to do what you need.
     pub fn from_cluster_env() -> Result<Self, InClusterError> {
-        let cluster_url = incluster_config::kube_dns();
+        let cluster_url = incluster_config::try_kube_from_env()?;
         let default_namespace = incluster_config::load_default_ns()?;
         let root_cert = incluster_config::load_cert()?;
 
@@ -207,6 +216,7 @@ impl Config {
                 ..Default::default()
             },
             proxy_url: None,
+            tls_server_name: None,
         })
     }
 
@@ -262,6 +272,7 @@ impl Config {
             accept_invalid_certs,
             proxy_url: loader.proxy_url()?,
             auth_info: loader.user,
+            tls_server_name: None,
         })
     }
 
