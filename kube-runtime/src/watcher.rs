@@ -179,7 +179,7 @@ async fn step_trampolined<K: Resource + Clone + DeserializeOwned + Debug + Send 
             Some(Ok(WatchEvent::Error(err))) => {
                 // HTTP GONE, means we have desynced and need to start over and re-list :(
                 let new_state = if err.code == 410 {
-                    State::Empty
+                    State::InitListed { resource_version }
                 } else {
                     State::Watching {
                         resource_version,
@@ -265,7 +265,7 @@ pub fn watcher<K: Resource + Clone + DeserializeOwned + Debug + Send + 'static>(
     list_params: ListParams,
 ) -> impl Stream<Item = Result<Event<K>>> + Send {
     futures::stream::unfold(
-        (api, list_params, State::Empty),
+        (api, list_params, State::InitListed { resource_version: "".to_owned() }),
         |(api, list_params, state)| async {
             let (event, state) = step(&api, &list_params, state).await;
             Some((event, (api, list_params, state)))
