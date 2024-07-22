@@ -44,6 +44,6 @@ jobs:
           echo "${{ env.SSH_KEY}}" >  ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
-          git remote add gitee  git@gitee.com:deepflowce/${{ env.REPO_NAME }}.git
+          git remote add gitee  git@gitee.com:deepflowio/${{ env.REPO_NAME }}.git
           git push --no-verify --all gitee -u -f
           git push -u gitee --tags -f
